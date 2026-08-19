@@ -1,0 +1,14 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+.npm-cache/
+*.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini

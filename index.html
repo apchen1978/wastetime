@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0a0d12" />
+<title>浪費時間 | 一個認真浪費時間的遊戲</title>
+<style>
+  /* ============================================================
+     浪費時間 (Waste Time) | 點擊/放置小遊戲
+     重建自遺失的 Gemini + Project IDX 專案（2026-08-19 重建）
+     Design: 暗色科技座艙 | 單一 accent 酸綠 #a8e63c
+     Radius 規則: 面板 12px、按鈕全圓形(pill)、晶片 6px
+     ============================================================ */
+
+  :root {
+    --bg:        #0a0d12;
+    --panel:     #11161d;
+    --panel-2:   #161d26;
+    --line:      #222c3a;
+    --line-soft: #1a2230;
+    --text:      #e6edf3;
+    --dim:       #8b98a5;
+    --accent:    #a8e63c;
+    --accent-ink:#0a0d12;
+    --danger:    #ff5d5d;
+    --warn:      #ffc857;
+    --r-panel: 12px;
+    --r-chip:  6px;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, "Microsoft JhengHei", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(168, 230, 60, 0.06), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, rgba(168, 230, 60, 0.04), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 微格線背景 */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 40%, transparent 100%);
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: clamp(14px, 3vw, 28px);
+    position: relative;
+  }
+
+  /* ---------- 頂欄 ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line-soft);
+    margin-bottom: 20px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+  .brand h1 {
+    font-size: clamp(20px, 4vw, 28px);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .brand .tagline {
+    color: var(--dim);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .head-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  .btn {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:active { transform: scale(0.96); }
+  .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ---------- 主版面 ---------- */
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-panel);
+    padding: 18px;
+  }
+  .panel h2 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+  .panel h2 .dot { color: var(--accent); }
+
+  /* ---------- 左：時間水槽 ---------- */
+  .sink {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: clamp(20px, 4vw, 36px) 18px;
+  }
+
+  .clock-btn {
+    position: relative;
+    width: clamp(180px, 40vw, 250px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    background:
+      radial-gradient(circle at 32% 28%, #1a2330, #0e131b 70%);
+    cursor: pointer;
+    transition: transform 0.06s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .clock-btn:hover { border-color: var(--accent); }
+  .clock-btn:active { transform: scale(0.955); }
+  .clock-btn.hot {
+    box-shadow: 0 0 0 6px rgba(168, 230, 60, 0.10), 0 0 42px rgba(168, 230, 60, 0.22);
+  }
+  .clock-btn svg { position: absolute; inset: 9%; width: 82%; height: 82%; }
+
+  .clock-btn .label {
+    position: absolute;
+    left: 0; right: 0; bottom: 16%;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--dim);
+    pointer-events: none;
+  }
+
+  /* 點擊飄字 */
+  .floaties { position: absolute; inset: 0; pointer-events: none; }
+  .floaty {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    text-shadow: 0 0 10px rgba(168,230,60,0.5);
+    animation: floatUp 0.7s ease-out forwards;
+    left: 50%;
+    top: 42%;
+  }
+  @keyframes floatUp {
+    0%   { transform: translate(-50%, 0) scale(0.7); opacity: 0; }
+    15%  { opacity: 1; }
+    100% { transform: translate(-50%, -64px) scale(1.15); opacity: 0; }
+  }
+
+  .readout { text-align: center; }
+  .readout .total {
+    font-family: var(--mono);
+    font-size: clamp(30px, 6vw, 46px);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--accent);
+    text-shadow: 0 0 18px rgba(168, 230, 60, 0.25);
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .total small { font-size: 0.5em; color: var(--text); font-weight: 600; }
+  .readout .meta {
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .meta b { color: var(--accent); font-weight: 600; }
+
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+    border: 1px solid var(--line);
+    border-radius: var(--r-chip);
+    padding: 5px 10px;
+    background: var(--panel-2);
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+  .chip .accent { color: var(--accent); }
+
+  /* ---------- 右：升級與統計 ---------- */
+  .controls { display: flex; flex-direction: column; gap: 14px; }
+
+  .gen-list { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; padding-right: 4px; }
+  .gen-list::-webkit-scrollbar { width: 6px; }
+  .gen-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+  .gen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-chip);
+    background: var(--panel-2);
+    transition: border-color 0.15s ease;
+  }
+  .gen:hover { border-color: var(--line); }
+  .gen .g-main { min-width: 0; }
+  .gen .g-name {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 14px; font-weight: 600;
+  }
+  .gen .g-name .count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--dim);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 1px 8px;
+  }
+  .gen .g-name .count.hot { color: var(--accent); border-color: var(--accent); }
+  .gen .g-desc {
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .gen .g-rate {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .buy {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: none;
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.07s ease, filter 0.12s ease;
+    font-variant-numeric: tabular-nums;
+  }
+  .buy:hover { filter: brightness(1.08); }
+  .buy:active { transform: scale(0.95); }
+  .buy:disabled {
+    background: #232c38;
+    color: #5c6a78;
+    cursor: not-allowed;
+    filter: none;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .stat {
+    border: 1px solid var(--line-soft);
+    border-radius: var(--r-chip);
+    padding: 10px;
+    background: var(--panel-2);
+  }
+  .stat .k {
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.05em;
+  }
+  .stat .v {
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .v.accent { color: var(--accent); }
+
+  /* ---------- 成就記錄 ---------- */
+  .log-panel { margin-top: 18px; }
+  .log-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+  .log-item {
+    display: flex; gap: 10px; align-items: baseline;
+    font-size: 12.5px;
+    color: var(--dim);
+    border-left: 2px solid var(--line);
+    padding: 5px 0 5px 10px;
+    animation: logIn 0.25s ease-out;
+  }
+  .log-item .t {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: #55636f;
+    flex-shrink: 0;
+  }
+  .log-item.ach { color: var(--text); border-left-color: var(--accent); }
+  .log-item.ach .t { color: var(--accent); }
+  @keyframes logIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- 里程碑橫幅 ---------- */
+  .banner {
+    position: fixed;
+    top: 18px; left: 50%;
+    transform: translate(-50%, -140%);
+    z-index: 40;
+    display: flex; flex-direction: column; gap: 4px; align-items: center;
+    padding: 14px 26px;
+    background: var(--panel-2);
+    border: 1px solid var(--accent);
+    border-radius: var(--r-panel);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 24px rgba(168,230,60,0.15);
+    text-align: center;
+    max-width: min(420px, 90vw);
+    transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.2);
+    pointer-events: none;
+  }
+  .banner.show { transform: translate(-50%, 0); }
+  .banner .b-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+  }
+  .banner .b-msg { font-size: 14px; color: var(--text); }
+
+  /* ---------- 重置確認 ---------- */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(5, 8, 12, 0.72);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 50;
+    padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    width: min(360px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-panel);
+    padding: 22px;
+  }
+  .modal h3 { font-size: 16px; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--dim); line-height: 1.6; margin-bottom: 18px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn.solid {
+    background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+  }
+  .btn.solid:hover { color: var(--accent-ink); }
+  .btn.solid-danger { background: var(--danger); color: #16090b; border-color: var(--danger); }
+  .btn.solid-danger:hover { color: #16090b; }
+
+  footer {
+    margin-top: 26px;
+    text-align: center;
+    font-size: 12px;
+    color: #4d5a66;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---------- 行動版 ---------- */
+  @media (max-width: 780px) {
+    main { grid-template-columns: 1fr; }
+    .controls { order: 2; }
+    .sink { order: 1; }
+    .gen-list { max-height: 300px; }
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* ---------- 減少動態 ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>浪費時間</h1>
+      <span class="tagline">一個認真浪費時間的遊戲</span>
+    </div>
+    <div class="head-actions">
+      <button class="btn" id="soundBtn" type="button">音效：開</button>
+      <button class="btn danger" id="resetBtn" type="button">重置進度</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 左：時間水槽 -->
+    <section class="panel sink">
+      <button class="clock-btn" id="clockBtn" type="button" aria-label="浪費一秒">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="46" fill="none" stroke="#222c3a" stroke-width="2.5"/>
+          <g stroke="#2c3a4d" stroke-width="3">
+            <line x1="50" y1="7"  x2="50" y2="12.5" />
+            <line x1="50" y1="87.5" x2="50" y2="93" />
+            <line x1="7"  y1="50" x2="12.5" y2="50" />
+            <line x1="87.5" y1="50" x2="93" y2="50" />
+            <line x1="19.6" y1="19.6" x2="23.5" y2="23.5" />
+            <line x1="80.4" y1="19.6" x2="76.5" y2="23.5" />
+            <line x1="19.6" y1="80.4" x2="23.5" y2="76.5" />
+            <line x1="80.4" y1="80.4" x2="76.5" y2="76.5" />
+          </g>
+          <g id="hands" style="transform-origin: 50px 50px;">
+            <line id="hourHand" x1="50" y1="50" x2="50" y2="30" stroke="#e6edf3" stroke-width="3.5" stroke-linecap="round"/>
+            <line id="minHand"  x1="50" y1="50" x2="50" y2="22" stroke="#a8e63c" stroke-width="2.5" stroke-linecap="round"/>
+            <line id="secHand"  x1="50" y1="50" x2="50" y2="16" stroke="#8b98a5" stroke-width="1.6" stroke-linecap="round"/>
+          </g>
+          <circle cx="50" cy="50" r="3" fill="#e6edf3"/>
+        </svg>
+        <span class="label">點我浪費 1 秒</span>
+        <div class="floaties" id="floaties"></div>
+      </button>
+
+      <div class="readout">
+        <div class="total" id="totalReadout">0 秒</div>
+        <div class="meta">每秒自動浪費 <b id="rateReadout">0 秒</b> · 每次點擊 <b id="clickReadout">1 秒</b></div>
+      </div>
+
+      <div class="chip-row">
+        <span class="chip">累計點擊 <b id="chipClicks">0</b></span>
+        <span class="chip">升級 <b id="chipGens">0</b> / 11</span>
+        <span class="chip">成就 <b class="accent" id="chipAch">0</b> / <b id="chipAchTotal">13</b></span>
+      </div>
+    </section>
+
+    <!-- 右：升級 + 統計 -->
+    <aside class="controls">
+      <section class="panel">
+        <h2><span class="dot">●</span> 時間加速器（點擊）</h2>
+        <div class="gen-list">
+          <div class="gen" id="gen-click">
+            <div class="g-main">
+              <div class="g-name">點擊加倍 <span class="count" id="clickMultCount">×1</span></div>
+              <div class="g-desc">每一下都更用力地浪費</div>
+              <div class="g-rate" id="clickMultRate">目前每次 +1 秒</div>
+            </div>
+            <button class="buy" type="button" data-buy="clickMult">花費 <span id="clickMultCost">50</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2><span class="dot">●</span> 時間浪費器</h2>
+        <div class="gen-list" id="genList"></div>
+      </section>
+
+      <section class="panel">
+        <h2><span class="dot">●</span> 統計</h2>
+        <div class="stats-grid">
+          <div class="stat"><div class="k">本日浪費（本次）</div><div class="v accent" id="statSession">0 秒</div></div>
+          <div class="stat"><div class="k">總點擊</div><div class="v" id="statClicks">0</div></div>
+          <div class="stat"><div class="k">每秒產量</div><div class="v accent" id="statRate">0 秒</div></div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <section class="panel log-panel">
+    <h2><span class="dot">●</span> 浪費日誌</h2>
+    <div class="log-list" id="logList"></div>
+  </section>
+
+  <footer>浪費時間 v0.1 · 重建自遺失的 Gemini + Project IDX 專案 · 資料存於本機瀏覽器</footer>
+</div>
+
+<!-- 里程碑橫幅 -->
+<div class="banner" id="banner">
+  <span class="b-title" id="bannerTitle"></span>
+  <span class="b-msg" id="bannerMsg"></span>
+</div>
+
+<!-- 重置確認 -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>確定要重置嗎？</h3>
+    <p>所有浪費的時間、升級與成就都會歸零。這是最終決定，無法復原。</p>
+    <div class="modal-actions">
+      <button class="btn" id="cancelReset" type="button">取消</button>
+      <button class="btn solid-danger" id="confirmReset" type="button">重置全部</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ================= 資料 ================= */
+  var SAVE_KEY = "wastetime.save.v1";
+
+  var GENERATORS = [
+    { id: "daze",   name: "發呆",        desc: "什麼都不做，時間就過去了",  base: 15,  rate: 1 },
+    { id: "phone",  name: "滑手機",      desc: "不知不覺就兩小時",          base: 120, rate: 5 },
+    { id: "binge",  name: "追劇",        desc: "再看一集就好",              base: 700, rate: 20 },
+    { id: "traffic",name: "通勤塞車",    desc: "卡在路上，動彈不得",        base: 3600, rate: 60 },
+    { id: "meeting",name: "無意義會議",  desc: "每週例行，與你無關",        base: 18000, rate: 240 },
+    { id: "night",  name: "熬夜修仙",    desc: "天亮再說",                  base: 90000, rate: 1000 },
+    { id: "shorts", name: "刷短影音",    desc: "最後一個就好",              base: 420000, rate: 5000 },
+    { id: "surf",   name: "網路閒逛",    desc: "我只是查個東西",            base: 2000000, rate: 20000 },
+    { id: "daze2",  name: "人生迷惘",    desc: "我在思考人生的意義",        base: 10000000, rate: 100000 },
+    { id: "hole",   name: "時間黑洞",    desc: "連光都逃不出來",            base: 50000000, rate: 1000000 }
+  ];
+
+  var CLICK_MULT_BASE = 50;
+  var CLICK_MULT_GROW = 2.6;
+
+  var ACHIEVEMENTS = [
+    { id: "t1m",   cond: "time",   target: 60,          title: "浪費 1 分鐘", msg: "一分鐘過去了。你不會想把它要回來的，對吧？" },
+    { id: "t1h",   cond: "time",   target: 3600,        title: "浪費 1 小時", msg: "一小時過去了。這下真的回不來了。" },
+    { id: "t1d",   cond: "time",   target: 86400,       title: "浪費 1 天",   msg: "一天過去了。你獲得了……空虛。" },
+    { id: "t1w",   cond: "time",   target: 604800,      title: "浪費 1 週",   msg: "一週過去了。你的朋友開始擔心你了。" },
+    { id: "t1mo",  cond: "time",   target: 2628000,     title: "浪費 1 月",   msg: "一個月過去了。時間成了你的藝術品。" },
+    { id: "t1y",   cond: "time",   target: 31536000,    title: "浪費 1 年",   msg: "一年過去了。歡迎成為時間藝術家。" },
+    { id: "c100",  cond: "clicks", target: 100,         title: "指尖大師",     msg: "點擊一百次。手指很有毅力。" },
+    { id: "c1k",   cond: "clicks", target: 1000,        title: "點擊狂人",     msg: "一千次點擊。鍵盤開始冒煙。" },
+    { id: "c10k",  cond: "clicks", target: 10000,       title: "人類點擊器",   msg: "一萬次。你已與滑鼠合一。" },
+    { id: "g5",    cond: "gens",   target: 5,           title: "菜鳥時間藝術家", msg: "擁有五種浪費器。萬丈高樓平地起。" },
+    { id: "g10",   cond: "gens",   target: 10,          title: "時間魔王",     msg: "十種浪費器全開。時間在你面前低頭。" },
+    { id: "rate",  cond: "rate",   target: 100000,      title: "時間本身",     msg: "每秒十萬秒。你已經不是人類了。" },
+    { id: "play",  cond: "session",target: 600,         title: "真愛無敵",     msg: "連續玩十分鐘。這遊戲才是你的本命。" }
+  ];
+
+  /* ================= 狀態 ================= */
+  var state = {
+    total: 0,          // 秒
+    clicks: 0,
+    gens: GENERATORS.map(function () { return 0; }),
+    clickMult: 0,      // 等級
+    ach: {},
+    sound: true,
+    ts: Date.now()
+  };
+
+  var sessionStart = Date.now();
+  var lastTick = Date.now();
+  var bannerTimer = null;
+  var bannerQueue = [];
+  var audioCtx = null;
+  var muted = false;
+
+  /* ================= DOM ================= */
+  var $ = function (id) { return document.getElementById(id); };
+  var totalEl = $("totalReadout"), rateEl = $("rateReadout"), clickEl = $("clickReadout");
+  var chipClicks = $("chipClicks"), chipGens = $("chipGens"), chipAch = $("chipAch"), chipAchTotal = $("chipAchTotal");
+  var statSession = $("statSession"), statClicks = $("statClicks"), statRate = $("statRate");
+  var genListEl = $("genList"), logListEl = $("logList"), floatiesEl = $("floaties");
+  var clockBtn = $("clockBtn"), soundBtn = $("soundBtn"), resetBtn = $("resetBtn");
+  var overlay = $("overlay");
+  var banner = $("banner"), bannerTitle = $("bannerTitle"), bannerMsg = $("bannerMsg");
+  var secHand = $("secHand"), minHand = $("minHand"), hourHand = $("hourHand");
+
+  chipAchTotal.textContent = ACHIEVEMENTS.length;
+
+  /* ================= 工具 ================= */
+  function humanize(sec) {
+    sec = Math.max(0, sec);
+    var units = [
+      [31536000, "年"], [2628000, "月"], [604800, "週"], [86400, "天"],
+      [3600, "小時"], [60, "分鐘"], [1, "秒"]
+    ];
+    for (var i = 0; i < units.length; i++) {
+      if (sec >= units[i][0]) {
+        var v = sec / units[i][0];
+        var digits = v >= 100 ? 0 : (v >= 10 ? 1 : (v >= 1 ? 1 : 2));
+        if (units[i][0] === 1) return Math.floor(v) + " 秒";
+        return v.toFixed(digits) + " " + units[i][1];
+      }
+    }
+    return "0 秒";
+  }
+
+  function fmtCost(n) {
+    if (n >= 1e8) return (n / 1e8).toFixed(1).replace(/\.0$/, "") + " 億";
+    if (n >= 1e4) return (n / 1e4).toFixed(1).replace(/\.0$/, "") + " 萬";
+    return Math.ceil(n).toLocaleString("zh-Hant");
+  }
+
+  function genCost(idx) {
+    return Math.ceil(GENERATORS[idx].base * Math.pow(1.15, state.gens[idx]));
+  }
+  function clickMultCost() {
+    return Math.ceil(CLICK_MULT_BASE * Math.pow(CLICK_MULT_GROW, state.clickMult));
+  }
+  function totalRate() {
+    var r = 0;
+    for (var i = 0; i < GENERATORS.length; i++) r += GENERATORS[i].rate * state.gens[i];
+    return r;
+  }
+  function clickPower() { return Math.pow(2, state.clickMult); }
+  function gensOwned() {
+    var c = 0;
+    for (var i = 0; i < state.gens.length; i++) if (state.gens[i] > 0) c++;
+    return c;
+  }
+
+  /* ================= 音效 ================= */
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { audioCtx = null; }
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }
+  function blip(freq, dur, type, vol) {
+    if (!state.sound || !audioCtx) return;
+    try {
+      var t = audioCtx.currentTime;
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = type || "square";
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(vol || 0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.06));
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t); o.stop(t + (dur || 0.06) + 0.02);
+    } catch (e) { /* ignore audio errors */ }
+  }
+  function sfxClick() { blip(720 + Math.random() * 120, 0.05, "square", 0.035); }
+  function sfxBuy()   { blip(440, 0.07, "square", 0.05); setTimeout(function () { blip(660, 0.09, "square", 0.05); }, 60); }
+  function sfxAch()   { [523, 659, 784].forEach(function (f, i) { setTimeout(function () { blip(f, 0.12, "triangle", 0.06); }, i * 110); }); }
+
+  /* ================= 儲存 ================= */
+  function save() {
+    state.ts = Date.now();
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ }
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (!s || typeof s.total !== "number") return;
+      state.total = s.total || 0;
+      state.clicks = s.clicks || 0;
+      state.gens = (s.gens && s.gens.length === GENERATORS.length) ? s.gens : GENERATORS.map(function () { return 0; });
+      state.clickMult = s.clickMult || 0;
+      state.ach = s.ach || {};
+      state.sound = s.sound !== false;
+      if (s.ts && typeof s.ts === "number") {
+        var away = (Date.now() - s.ts) / 1000;
+        var cap = 8 * 3600;
+        if (away > 60) {
+          var gain = Math.min(away, cap) * totalRate();
+          if (gain > 0.5) {
+            state.total += gain;
+            queueBanner("你不在的期間", "時間又偷偷浪費了 " + humanize(gain));
+          }
+        }
+      }
+    } catch (e) { /* corrupted save ignored */ }
+  }
+
+  /* ================= 日誌與成就 ================= */
+  function logLine(text, isAch) {
+    var d = new Date();
+    var t = d.toTimeString().slice(0, 8);
+    var div = document.createElement("div");
+    div.className = "log-item" + (isAch ? " ach" : "");
+    var spanT = document.createElement("span");
+    spanT.className = "t";
+    spanT.textContent = t;
+    var spanM = document.createElement("span");
+    spanM.textContent = text;
+    div.appendChild(spanT); div.appendChild(spanM);
+    logListEl.insertBefore(div, logListEl.firstChild);
+    while (logListEl.children.length > 60) logListEl.removeChild(logListEl.lastChild);
+  }
+
+  function queueBanner(title, msg) {
+    bannerQueue.push({ title: title, msg: msg });
+    if (!bannerTimer) showNextBanner();
+  }
+  function showNextBanner() {
+    var item = bannerQueue.shift();
+    if (!item) { bannerTimer = null; return; }
+    bannerTitle.textContent = item.title;
+    bannerMsg.textContent = item.msg;
+    banner.classList.add("show");
+    sfxAch();
+    bannerTimer = setTimeout(function () {
+      banner.classList.remove("show");
+      bannerTimer = setTimeout(showNextBanner, 350);
+    }, 2600);
+  }
+
+  function checkAchievements() {
+    var rate = totalRate();
+    var sessionSec = (Date.now() - sessionStart) / 1000;
+    var unlocked = 0;
+    for (var i = 0; i < ACHIEVEMENTS.length; i++) {
+      var a = ACHIEVEMENTS[i];
+      if (state.ach[a.id]) { unlocked++; continue; }
+      var hit = false;
+      switch (a.cond) {
+        case "time":    hit = state.total >= a.target; break;
+        case "clicks":  hit = state.clicks >= a.target; break;
+        case "gens":    hit = gensOwned() >= a.target; break;
+        case "rate":    hit = rate >= a.target; break;
+        case "session": hit = sessionSec >= a.target; break;
+      }
+      if (hit) {
+        state.ach[a.id] = true;
+        unlocked++;
+        logLine("成就解鎖：" + a.title + "（" + a.msg + "）", true);
+        queueBanner(a.title, a.msg);
+      }
+    }
+    if (unlocked) save();
+  }
+
+  /* ================= 升級介面 ================= */
+  function buildGens() {
+    genListEl.innerHTML = "";
+    GENERATORS.forEach(function (g, idx) {
+      var row = document.createElement("div");
+      row.className = "gen";
+
+      var main = document.createElement("div");
+      main.className = "g-main";
+      var name = document.createElement("div");
+      name.className = "g-name";
+      name.appendChild(document.createTextNode(g.name));
+      var count = document.createElement("span");
+      count.className = "count";
+      count.id = "gcnt-" + idx;
+      count.textContent = "×0";
+      name.appendChild(count);
+      var desc = document.createElement("div");
+      desc.className = "g-desc";
+      desc.textContent = g.desc;
+      var rate = document.createElement("div");
+      rate.className = "g-rate";
+      rate.id = "grate-" + idx;
+      rate.textContent = "+" + g.rate + " 秒/秒";
+      main.appendChild(name); main.appendChild(desc); main.appendChild(rate);
+
+      var buy = document.createElement("button");
+      buy.className = "buy";
+      buy.type = "button";
+      buy.dataset.buy = "gen:" + idx;
+      buy.innerHTML = "花費 <span id=\"gcost-" + idx + "\"></span>";
+      buy.addEventListener("click", function () { buyGen(idx); });
+
+      row.appendChild(main); row.appendChild(buy);
+      genListEl.appendChild(row);
+    });
+  }
+
+  function buyGen(idx) {
+    var c = genCost(idx);
+    if (state.total < c) return;
+    state.total -= c;
+    state.gens[idx]++;
+    sfxBuy();
+    logLine("購買「" + GENERATORS[idx].name + "」（等級 " + state.gens[idx] + "）");
+    save();
+    render();
+  }
+  function buyClickMult() {
+    var c = clickMultCost();
+    if (state.total < c) return;
+    state.total -= c;
+    state.clickMult++;
+    sfxBuy();
+    logLine("升級「點擊加倍」至 ×" + Math.pow(2, state.clickMult));
+    save();
+    render();
+  }
+
+  /* ================= 點擊 ================= */
+  function onClockClick(e) {
+    ensureAudio();
+    var gain = clickPower();
+    state.total += gain;
+    state.clicks++;
+    sfxClick();
+    clockBtn.classList.remove("hot");
+    void clockBtn.offsetWidth; /* 重啟動畫 */
+    clockBtn.classList.add("hot");
+
+    var f = document.createElement("span");
+    f.className = "floaty";
+    f.textContent = "+" + (gain === 1 ? "1 秒" : humanize(gain));
+    var r = Math.random() * 60 - 30;
+    f.style.marginLeft = r + "px";
+    floatiesEl.appendChild(f);
+    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 720);
+
+    save();
+    render();
+  }
+
+  /* ================= 渲染 ================= */
+  function render() {
+    var rate = totalRate();
+    totalEl.innerHTML = humanize(state.total) + "<small> 已浪費</small>";
+    rateEl.textContent = humanize(rate);
+    clickEl.textContent = humanize(clickPower());
+    chipClicks.textContent = state.clicks.toLocaleString("zh-Hant");
+    var gensTotal = GENERATORS.length + 1;
+    var gensOwnedTotal = gensOwned() + (state.clickMult > 0 ? 1 : 0);
+    chipGens.textContent = gensOwnedTotal + " / " + gensTotal;
+    var achCount = 0;
+    for (var k in state.ach) if (state.ach[k]) achCount++;
+    chipAch.textContent = achCount;
+    statSession.textContent = humanize((Date.now() - sessionStart) / 1000);
+    statClicks.textContent = state.clicks.toLocaleString("zh-Hant");
+    statRate.textContent = humanize(rate);
+
+    /* 點擊加倍 */
+    var cmCost = clickMultCost();
+    var cmBtn = document.querySelector('[data-buy="clickMult"]');
+    cmBtn.disabled = state.total < cmCost;
+    cmBtn.querySelector("span").textContent = fmtCost(cmCost);
+    $("clickMultCount").textContent = "×" + Math.pow(2, state.clickMult);
+    $("clickMultRate").textContent = "目前每次 +" + humanize(clickPower());
+
+    /* 升級列 */
+    for (var i = 0; i < GENERATORS.length; i++) {
+      var c = genCost(i);
+      var b = document.querySelector('[data-buy="gen:' + i + '"]');
+      b.disabled = state.total < c;
+      b.querySelector("span").textContent = fmtCost(c);
+      var cnt = $("gcnt-" + i);
+      cnt.textContent = "×" + state.gens[i];
+      cnt.classList.toggle("hot", state.gens[i] > 0);
+      $("grate-" + i).textContent = "+" + humanize(GENERATORS[i].rate * state.gens[i]) + "/秒";
+    }
+
+    /* 時鐘指針 */
+    var total = state.total;
+    var secDeg = (total % 60) * 6;
+    var minDeg = ((total / 60) % 60) * 6;
+    var hourDeg = ((total / 3600) % 12) * 30;
+    secHand.setAttribute("transform", "rotate(" + secDeg + " 50 50)");
+    minHand.setAttribute("transform", "rotate(" + minDeg + " 50 50)");
+    hourHand.setAttribute("transform", "rotate(" + hourDeg + " 50 50)");
+  }
+
+  /* ================= 主迴圈 ================= */
+  function tick() {
+    var now = Date.now();
+    var dt = (now - lastTick) / 1000;
+    lastTick = now;
+    var rate = totalRate();
+    if (rate > 0) {
+      state.total += rate * dt;
+      save();
+      render();
+      checkAchievements();
+    } else {
+      render();
+    }
+  }
+
+  /* ================= 事件 ================= */
+  clockBtn.addEventListener("click", onClockClick);
+
+  soundBtn.addEventListener("click", function () {
+    ensureAudio();
+    state.sound = !state.sound;
+    soundBtn.textContent = state.sound ? "音效：開" : "音效：關";
+    save();
+    blip(500, 0.06, "square", 0.05);
+  });
+
+  resetBtn.addEventListener("click", function () { overlay.classList.add("show"); });
+  $("cancelReset").addEventListener("click", function () { overlay.classList.remove("show"); });
+  $("confirmReset").addEventListener("click", function () {
+    overlay.classList.remove("show");
+    state.total = 0; state.clicks = 0;
+    state.gens = GENERATORS.map(function () { return 0; });
+    state.clickMult = 0;
+    state.ach = {};
+    logLine("進度已重置。一切從零開始浪費。");
+    save();
+    render();
+  });
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.classList.remove("show"); });
+
+  document.addEventListener("visibilitychange", function () { if (document.hidden) save(); });
+  window.addEventListener("beforeunload", save);
+
+  /* ================= 啟動 ================= */
+  load();
+  soundBtn.textContent = state.sound ? "音效：開" : "音效：關";
+  buildGens();
+  render();
+  logLine("遊戲載入。開始浪費時間吧。");
+  checkAchievements();
+  lastTick = Date.now();
+  setInterval(tick, 100);
+})();
+</script>
+</body>
+</html>
