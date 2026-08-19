@@ -7,8 +7,10 @@
 <title>浪費時間 | 一個認真浪費時間的遊戲</title>
 <style>
   /* ============================================================
-     浪費時間 (Waste Time) | 點擊/放置小遊戲
-     重建自遺失的 Gemini + Project IDX 專案（2026-08-19 重建）
+     浪費時間 (Waste Time) v0.2 | 點擊/放置小遊戲
+     重建自遺失的 Gemini + Project IDX 專案（2026-08-19）
+     v0.2 遊戲爽度升級：Q彈擠壓 / 霓虹漣漪 / CPS 聯動指針 /
+     數字彈跳 / WebAudio 晶片音 / 摸魚狂熱事件
      Design: 暗色科技座艙 | 單一 accent 酸綠 #a8e63c
      Radius 規則: 面板 12px、按鈕全圓形(pill)、晶片 6px
      ============================================================ */
@@ -23,8 +25,8 @@
     --dim:       #8b98a5;
     --accent:    #a8e63c;
     --accent-ink:#0a0d12;
+    --gold:      #ffc857;
     --danger:    #ff5d5d;
-    --warn:      #ffc857;
     --r-panel: 12px;
     --r-chip:  6px;
     --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, "Microsoft JhengHei", monospace;
@@ -45,6 +47,7 @@
     font-family: var(--sans);
     min-height: 100dvh;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
 
   /* 微格線背景 */
@@ -52,6 +55,7 @@
     content: "";
     position: fixed; inset: 0;
     pointer-events: none;
+    z-index: 0;
     background-image:
       linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
@@ -60,11 +64,26 @@
     -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 40%, transparent 100%);
   }
 
+  /* 狂熱模式：外框金光閃爍 */
+  body.frenzy::after {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 70;
+    border: 3px solid rgba(255, 199, 87, 0.05);
+    animation: goldFlash 0.9s ease-in-out infinite;
+  }
+  @keyframes goldFlash {
+    0%, 100% { border-color: rgba(255,199,87,0.06); box-shadow: inset 0 0 30px rgba(255,199,87,0.05); }
+    50%      { border-color: rgba(255,199,87,0.9);  box-shadow: inset 0 0 90px rgba(255,199,87,0.30); }
+  }
+
   .wrap {
     max-width: 1080px;
     margin: 0 auto;
     padding: clamp(14px, 3vw, 28px);
     position: relative;
+    z-index: 1;
   }
 
   /* ---------- 頂欄 ---------- */
@@ -158,13 +177,31 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     user-select: none;
+    overflow: visible;
   }
   .clock-btn:hover { border-color: var(--accent); }
   .clock-btn:active { transform: scale(0.955); }
   .clock-btn.hot {
     box-shadow: 0 0 0 6px rgba(168, 230, 60, 0.10), 0 0 42px rgba(168, 230, 60, 0.22);
   }
-  .clock-btn svg { position: absolute; inset: 9%; width: 82%; height: 82%; }
+  body.frenzy .clock-btn.hot {
+    box-shadow: 0 0 0 6px rgba(255,199,87,0.12), 0 0 46px rgba(255,199,87,0.30);
+  }
+
+  /* Q 彈擠壓 */
+  .clock-btn.squash { animation: squash 0.34s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes squash {
+    0%   { transform: scale(1, 1); }
+    18%  { transform: scale(1.16, 0.86); }
+    45%  { transform: scale(0.92, 1.08); }
+    70%  { transform: scale(1.05, 0.96); }
+    100% { transform: scale(1, 1); }
+  }
+
+  .clock-btn svg { position: absolute; inset: 9%; width: 82%; height: 82%; pointer-events: none; }
+  #hands { transition: filter 0.3s ease; transform-origin: 50px 50px; }
+  #hands.fast { filter: blur(0.7px); }
+  #hands.blur { filter: blur(2.2px); }
 
   .clock-btn .label {
     position: absolute;
@@ -175,29 +212,53 @@
     letter-spacing: 0.18em;
     color: var(--dim);
     pointer-events: none;
+    z-index: 3;
   }
 
-  /* 點擊飄字 */
-  .floaties { position: absolute; inset: 0; pointer-events: none; }
+  /* 點擊漣漪 */
+  .floaties { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    border: 2.5px solid rgba(168, 230, 60, 0.85);
+    box-shadow: 0 0 18px rgba(168, 230, 60, 0.45), inset 0 0 12px rgba(168, 230, 60, 0.2);
+    pointer-events: none;
+    animation: rippleOut 0.55s ease-out forwards;
+    z-index: 4;
+  }
+  body.frenzy .ripple { border-color: rgba(255,199,87,0.9); box-shadow: 0 0 18px rgba(255,199,87,0.5), inset 0 0 12px rgba(255,199,87,0.25); }
+  @keyframes rippleOut {
+    0%   { transform: translate(-50%, -50%) scale(0.15); opacity: 0.95; }
+    100% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; }
+  }
+
+  /* 點擊飄字（隨機角度與位移） */
   .floaty {
     position: absolute;
     font-family: var(--mono);
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--accent);
-    text-shadow: 0 0 10px rgba(168,230,60,0.5);
-    animation: floatUp 0.7s ease-out forwards;
+    text-shadow: 0 0 10px rgba(168,230,60,0.55);
+    --dx: 0px;
+    --rot: 0deg;
+    --drop: 78px;
+    animation: floatUp 0.85s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
     left: 50%;
-    top: 42%;
+    top: 40%;
+    z-index: 5;
+    pointer-events: none;
   }
+  body.frenzy .floaty { color: var(--gold); text-shadow: 0 0 10px rgba(255,199,87,0.6); }
   @keyframes floatUp {
-    0%   { transform: translate(-50%, 0) scale(0.7); opacity: 0; }
-    15%  { opacity: 1; }
-    100% { transform: translate(-50%, -64px) scale(1.15); opacity: 0; }
+    0%   { transform: translate(-50%, 0) rotate(0deg) scale(0.55); opacity: 0; }
+    12%  { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-1 * var(--drop))) rotate(var(--rot)) scale(1.18); opacity: 0; }
   }
 
   .readout { text-align: center; }
   .readout .total {
+    display: inline-block;
     font-family: var(--mono);
     font-size: clamp(30px, 6vw, 46px);
     font-weight: 700;
@@ -206,8 +267,15 @@
     text-shadow: 0 0 18px rgba(168, 230, 60, 0.25);
     line-height: 1.15;
     font-variant-numeric: tabular-nums;
+    transform-origin: 50% 60%;
   }
   .readout .total small { font-size: 0.5em; color: var(--text); font-weight: 600; }
+  .readout .total.tick { animation: tickPop 0.22s ease-out; }
+  .readout .total.bigpop { animation: bigPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  body.frenzy .readout .total { color: var(--gold); text-shadow: 0 0 18px rgba(255,199,87,0.3); }
+  @keyframes tickPop { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  @keyframes bigPop  { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
   .readout .meta {
     margin-top: 6px;
     font-family: var(--mono);
@@ -216,6 +284,7 @@
     font-variant-numeric: tabular-nums;
   }
   .readout .meta b { color: var(--accent); font-weight: 600; }
+  body.frenzy .readout .meta b { color: var(--gold); }
 
   .chip-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .chip {
@@ -247,7 +316,7 @@
     border: 1px solid var(--line-soft);
     border-radius: var(--r-chip);
     background: var(--panel-2);
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, transform 0.08s ease;
   }
   .gen:hover { border-color: var(--line); }
   .gen .g-main { min-width: 0; }
@@ -279,6 +348,7 @@
     margin-top: 3px;
     font-variant-numeric: tabular-nums;
   }
+  body.frenzy .gen .g-rate { color: var(--gold); }
 
   .buy {
     font-family: var(--mono);
@@ -296,13 +366,15 @@
     font-variant-numeric: tabular-nums;
   }
   .buy:hover { filter: brightness(1.08); }
-  .buy:active { transform: scale(0.95); }
+  .buy:active { transform: scale(0.93); }
   .buy:disabled {
     background: #232c38;
     color: #5c6a78;
     cursor: not-allowed;
     filter: none;
   }
+  .buy.flash { animation: buyFlash 0.3s ease-out; }
+  @keyframes buyFlash { 0% { transform: scale(1.18); filter: brightness(1.3); } 100% { transform: scale(1); } }
 
   .stats-grid {
     display: grid;
@@ -328,6 +400,7 @@
     font-variant-numeric: tabular-nums;
   }
   .stat .v.accent { color: var(--accent); }
+  body.frenzy .stat .v.accent { color: var(--gold); }
 
   /* ---------- 成就記錄 ---------- */
   .log-panel { margin-top: 18px; }
@@ -355,7 +428,7 @@
     position: fixed;
     top: 18px; left: 50%;
     transform: translate(-50%, -140%);
-    z-index: 40;
+    z-index: 80;
     display: flex; flex-direction: column; gap: 4px; align-items: center;
     padding: 14px 26px;
     background: var(--panel-2);
@@ -375,6 +448,80 @@
     color: var(--accent);
   }
   .banner .b-msg { font-size: 14px; color: var(--text); }
+  .banner.gold { border-color: var(--gold); box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 24px rgba(255,199,87,0.25); }
+  .banner.gold .b-title { color: var(--gold); }
+
+  /* ---------- 狂熱計時 ---------- */
+  .frenzy-chip {
+    position: fixed;
+    top: 76px; right: 16px;
+    z-index: 75;
+    display: none;
+    align-items: center; gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #1a1405;
+    background: var(--gold);
+    border-radius: 999px;
+    padding: 8px 16px;
+    box-shadow: 0 0 22px rgba(255,199,87,0.55);
+    animation: chipPulse 0.6s ease-in-out infinite;
+    white-space: nowrap;
+  }
+  .frenzy-chip.show { display: flex; }
+  @keyframes chipPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.06); }
+  }
+
+  /* ---------- 摸魚氣泡 ---------- */
+  .slack-bubble {
+    position: fixed;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: linear-gradient(140deg, rgba(255,199,87,0.16), rgba(168,230,60,0.10));
+    border: 1.5px solid rgba(255,199,87,0.65);
+    box-shadow: 0 0 26px rgba(255,199,87,0.28), inset 0 0 14px rgba(255,199,87,0.10);
+    animation: bubbleFloat 2.6s ease-in-out infinite;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.4s ease, transform 0.15s ease;
+    user-select: none;
+  }
+  .slack-bubble:hover { transform: scale(1.06); }
+  .slack-bubble .b-orb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffe9b0, var(--gold) 60%, #d99a1f);
+    box-shadow: 0 0 14px rgba(255,199,87,0.8);
+    animation: orbGlow 1.6s ease-in-out infinite;
+  }
+  @keyframes orbGlow { 0%, 100% { box-shadow: 0 0 10px rgba(255,199,87,0.6); } 50% { box-shadow: 0 0 22px rgba(255,199,87,1); } }
+  .slack-bubble .b-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+  }
+  .slack-bubble .b-hint {
+    font-size: 10.5px;
+    color: var(--dim);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  @keyframes bubbleFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-9px); }
+  }
+  .slack-bubble.dying { opacity: 0; transform: scale(0.7); }
 
   /* ---------- 重置確認 ---------- */
   .overlay {
@@ -383,7 +530,7 @@
     backdrop-filter: blur(3px);
     display: none;
     align-items: center; justify-content: center;
-    z-index: 50;
+    z-index: 90;
     padding: 20px;
   }
   .overlay.show { display: flex; }
@@ -419,6 +566,7 @@
     .sink { order: 1; }
     .gen-list { max-height: 300px; }
     .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .frenzy-chip { top: auto; bottom: 18px; right: 12px; }
   }
 
   /* ---------- 減少動態 ---------- */
@@ -460,7 +608,7 @@
             <line x1="19.6" y1="80.4" x2="23.5" y2="76.5" />
             <line x1="80.4" y1="80.4" x2="76.5" y2="76.5" />
           </g>
-          <g id="hands" style="transform-origin: 50px 50px;">
+          <g id="hands">
             <line id="hourHand" x1="50" y1="50" x2="50" y2="30" stroke="#e6edf3" stroke-width="3.5" stroke-linecap="round"/>
             <line id="minHand"  x1="50" y1="50" x2="50" y2="22" stroke="#a8e63c" stroke-width="2.5" stroke-linecap="round"/>
             <line id="secHand"  x1="50" y1="50" x2="50" y2="16" stroke="#8b98a5" stroke-width="1.6" stroke-linecap="round"/>
@@ -479,7 +627,7 @@
       <div class="chip-row">
         <span class="chip">累計點擊 <b id="chipClicks">0</b></span>
         <span class="chip">升級 <b id="chipGens">0</b> / 11</span>
-        <span class="chip">成就 <b class="accent" id="chipAch">0</b> / <b id="chipAchTotal">13</b></span>
+        <span class="chip">成就 <b class="accent" id="chipAch">0</b> / <b id="chipAchTotal">15</b></span>
       </div>
     </section>
 
@@ -520,8 +668,11 @@
     <div class="log-list" id="logList"></div>
   </section>
 
-  <footer>浪費時間 v0.1 · 重建自遺失的 Gemini + Project IDX 專案 · 資料存於本機瀏覽器</footer>
+  <footer>浪費時間 v0.2 · 重建自遺失的 Gemini + Project IDX 專案 · 資料存於本機瀏覽器</footer>
 </div>
+
+<!-- 狂熱計時 -->
+<div class="frenzy-chip" id="frenzyChip">狂熱 ×7 · <span id="frenzyCount">5.0s</span></div>
 
 <!-- 里程碑橫幅 -->
 <div class="banner" id="banner">
@@ -563,6 +714,13 @@
 
   var CLICK_MULT_BASE = 50;
   var CLICK_MULT_GROW = 2.6;
+  var FRENZY_MULT = 7;
+  var FRENZY_DUR = 5000;      // 5 秒
+  var SLACK_FIRST_MIN = 15000;  // 首次摸魚氣泡
+  var SLACK_FIRST_MAX = 25000;
+  var SLACK_MIN = 40000;        // 之後的間隔
+  var SLACK_MAX = 80000;
+  var SLACK_TTL = 12000;        // 氣泡存活時間
 
   var ACHIEVEMENTS = [
     { id: "t1m",   cond: "time",   target: 60,          title: "浪費 1 分鐘", msg: "一分鐘過去了。你不會想把它要回來的，對吧？" },
@@ -577,26 +735,33 @@
     { id: "g5",    cond: "gens",   target: 5,           title: "菜鳥時間藝術家", msg: "擁有五種浪費器。萬丈高樓平地起。" },
     { id: "g10",   cond: "gens",   target: 10,          title: "時間魔王",     msg: "十種浪費器全開。時間在你面前低頭。" },
     { id: "rate",  cond: "rate",   target: 100000,      title: "時間本身",     msg: "每秒十萬秒。你已經不是人類了。" },
-    { id: "play",  cond: "session",target: 600,         title: "真愛無敵",     msg: "連續玩十分鐘。這遊戲才是你的本命。" }
+    { id: "play",  cond: "session",target: 600,         title: "真愛無敵",     msg: "連續玩十分鐘。這遊戲才是你的本命。" },
+    { id: "slack1",cond: "slack",  target: 1,           title: "摸魚王",       msg: "你抓住了一次靈光一閃。沒白摸。" },
+    { id: "fr5",   cond: "frenzy", target: 5,           title: "狂熱常客",     msg: "觸發五次狂熱。時間被你玩弄於股掌之間。" }
   ];
 
   /* ================= 狀態 ================= */
   var state = {
-    total: 0,          // 秒
+    total: 0,
     clicks: 0,
     gens: GENERATORS.map(function () { return 0; }),
-    clickMult: 0,      // 等級
+    clickMult: 0,
     ach: {},
     sound: true,
+    slack: 0,
+    frenzies: 0,
     ts: Date.now()
   };
 
+  var frenzy = null;          // { endAt } 或 null
   var sessionStart = Date.now();
   var lastTick = Date.now();
   var bannerTimer = null;
   var bannerQueue = [];
+  var slackTimer = null;
+  var slackBubble = null;
+  var slackTtlTimer = null;
   var audioCtx = null;
-  var muted = false;
 
   /* ================= DOM ================= */
   var $ = function (id) { return document.getElementById(id); };
@@ -607,7 +772,8 @@
   var clockBtn = $("clockBtn"), soundBtn = $("soundBtn"), resetBtn = $("resetBtn");
   var overlay = $("overlay");
   var banner = $("banner"), bannerTitle = $("bannerTitle"), bannerMsg = $("bannerMsg");
-  var secHand = $("secHand"), minHand = $("minHand"), hourHand = $("hourHand");
+  var frenzyChip = $("frenzyChip"), frenzyCount = $("frenzyCount");
+  var hands = $("hands"), secHand = $("secHand"), minHand = $("minHand"), hourHand = $("hourHand");
 
   chipAchTotal.textContent = ACHIEVEMENTS.length;
 
@@ -621,7 +787,7 @@
     for (var i = 0; i < units.length; i++) {
       if (sec >= units[i][0]) {
         var v = sec / units[i][0];
-        var digits = v >= 100 ? 0 : (v >= 10 ? 1 : (v >= 1 ? 1 : 2));
+        var digits = v >= 100 ? 0 : (v >= 10 ? 1 : 2);
         if (units[i][0] === 1) return Math.floor(v) + " 秒";
         return v.toFixed(digits) + " " + units[i][1];
       }
@@ -635,25 +801,35 @@
     return Math.ceil(n).toLocaleString("zh-Hant");
   }
 
+  function fmtGain(n) {
+    return "+" + Math.round(n).toLocaleString("zh-Hant") + "s";
+  }
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
   function genCost(idx) {
     return Math.ceil(GENERATORS[idx].base * Math.pow(1.15, state.gens[idx]));
   }
   function clickMultCost() {
     return Math.ceil(CLICK_MULT_BASE * Math.pow(CLICK_MULT_GROW, state.clickMult));
   }
-  function totalRate() {
+  function baseRate() {
     var r = 0;
     for (var i = 0; i < GENERATORS.length; i++) r += GENERATORS[i].rate * state.gens[i];
     return r;
   }
-  function clickPower() { return Math.pow(2, state.clickMult); }
+  function frenzyMult() {
+    return frenzy && Date.now() < frenzy.endAt ? FRENZY_MULT : 1;
+  }
+  function totalRate() { return baseRate() * frenzyMult(); }
+  function clickPower() { return Math.pow(2, state.clickMult) * frenzyMult(); }
   function gensOwned() {
     var c = 0;
     for (var i = 0; i < state.gens.length; i++) if (state.gens[i] > 0) c++;
     return c;
   }
 
-  /* ================= 音效 ================= */
+  /* ================= WebAudio ================= */
   function ensureAudio() {
     if (!audioCtx) {
       try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -661,23 +837,79 @@
     }
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
   }
-  function blip(freq, dur, type, vol) {
+  function tone(freq, dur, type, vol, delay, slideTo) {
     if (!state.sound || !audioCtx) return;
     try {
-      var t = audioCtx.currentTime;
+      var t = audioCtx.currentTime + (delay || 0);
       var o = audioCtx.createOscillator();
       var g = audioCtx.createGain();
       o.type = type || "square";
       o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
       g.gain.setValueAtTime(vol || 0.05, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.06));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.connect(g); g.connect(audioCtx.destination);
-      o.start(t); o.stop(t + (dur || 0.06) + 0.02);
+      o.start(t); o.stop(t + dur + 0.02);
     } catch (e) { /* ignore audio errors */ }
   }
-  function sfxClick() { blip(720 + Math.random() * 120, 0.05, "square", 0.035); }
-  function sfxBuy()   { blip(440, 0.07, "square", 0.05); setTimeout(function () { blip(660, 0.09, "square", 0.05); }, 60); }
-  function sfxAch()   { [523, 659, 784].forEach(function (f, i) { setTimeout(function () { blip(f, 0.12, "triangle", 0.06); }, i * 110); }); }
+  function noise(dur, vol, delay, hpFreq) {
+    if (!state.sound || !audioCtx) return;
+    try {
+      var t = audioCtx.currentTime + (delay || 0);
+      var len = Math.max(1, Math.floor(audioCtx.sampleRate * dur));
+      var buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      var f = audioCtx.createBiquadFilter();
+      f.type = "highpass"; f.frequency.value = hpFreq || 2500;
+      var g = audioCtx.createGain();
+      g.gain.setValueAtTime(vol || 0.06, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+      src.start(t);
+    } catch (e) { /* ignore */ }
+  }
+
+  /* 清脆機械滴答 */
+  function sfxTick() {
+    var p = rand(0.85, 1.15);
+    tone(1900 * p, 0.035, "square", 0.05);
+    tone(2850 * p, 0.018, "sine", 0.04, 0.002);
+    noise(0.012, 0.05, 0, 4000);
+  }
+  /* 購買：上升兩音 */
+  function sfxBuy() {
+    tone(523.25, 0.07, "square", 0.05);
+    tone(659.25, 0.07, "square", 0.05, 0.06);
+    tone(783.99, 0.1, "triangle", 0.045, 0.12);
+  }
+  /* 成就：上升音階 */
+  function sfxAch() {
+    var notes = [523.25, 659.25, 783.99, 1046.5];
+    for (var i = 0; i < notes.length; i++) {
+      tone(notes[i], 0.14, "triangle", 0.055, i * 0.11);
+    }
+    noise(0.25, 0.025, 0.33, 6000);
+  }
+  /* 摸魚出現：輕柔提示 */
+  function sfxSlack() {
+    tone(987.77, 0.08, "sine", 0.045);
+    tone(1318.51, 0.12, "sine", 0.04, 0.07);
+  }
+  /* 狂熱啟動：金黃上升掃頻 */
+  function sfxFrenzy() {
+    tone(300, 0.45, "sawtooth", 0.04, 0, 1300);
+    tone(600, 0.45, "square", 0.03, 0.03, 1800);
+    tone(1567.98, 0.2, "triangle", 0.05, 0.2);
+    tone(2093, 0.3, "triangle", 0.045, 0.32);
+    noise(0.35, 0.03, 0.15, 5000);
+  }
+  /* 狂熱結束：下滑 */
+  function sfxFrenzyEnd() {
+    tone(900, 0.18, "square", 0.035, 0, 300);
+  }
 
   /* ================= 儲存 ================= */
   function save() {
@@ -696,11 +928,13 @@
       state.clickMult = s.clickMult || 0;
       state.ach = s.ach || {};
       state.sound = s.sound !== false;
+      state.slack = s.slack || 0;
+      state.frenzies = s.frenzies || 0;
       if (s.ts && typeof s.ts === "number") {
         var away = (Date.now() - s.ts) / 1000;
         var cap = 8 * 3600;
         if (away > 60) {
-          var gain = Math.min(away, cap) * totalRate();
+          var gain = Math.min(away, cap) * baseRate();
           if (gain > 0.5) {
             state.total += gain;
             queueBanner("你不在的期間", "時間又偷偷浪費了 " + humanize(gain));
@@ -726,8 +960,8 @@
     while (logListEl.children.length > 60) logListEl.removeChild(logListEl.lastChild);
   }
 
-  function queueBanner(title, msg) {
-    bannerQueue.push({ title: title, msg: msg });
+  function queueBanner(title, msg, gold) {
+    bannerQueue.push({ title: title, msg: msg, gold: !!gold });
     if (!bannerTimer) showNextBanner();
   }
   function showNextBanner() {
@@ -735,6 +969,7 @@
     if (!item) { bannerTimer = null; return; }
     bannerTitle.textContent = item.title;
     bannerMsg.textContent = item.msg;
+    banner.classList.toggle("gold", !!item.gold);
     banner.classList.add("show");
     sfxAch();
     bannerTimer = setTimeout(function () {
@@ -744,12 +979,12 @@
   }
 
   function checkAchievements() {
-    var rate = totalRate();
+    var rate = baseRate();
     var sessionSec = (Date.now() - sessionStart) / 1000;
     var unlocked = 0;
     for (var i = 0; i < ACHIEVEMENTS.length; i++) {
       var a = ACHIEVEMENTS[i];
-      if (state.ach[a.id]) { unlocked++; continue; }
+      if (state.ach[a.id]) { continue; }
       var hit = false;
       switch (a.cond) {
         case "time":    hit = state.total >= a.target; break;
@@ -757,6 +992,8 @@
         case "gens":    hit = gensOwned() >= a.target; break;
         case "rate":    hit = rate >= a.target; break;
         case "session": hit = sessionSec >= a.target; break;
+        case "slack":   hit = state.slack >= a.target; break;
+        case "frenzy":  hit = state.frenzies >= a.target; break;
       }
       if (hit) {
         state.ach[a.id] = true;
@@ -812,6 +1049,7 @@
     state.total -= c;
     state.gens[idx]++;
     sfxBuy();
+    flashBuy('[data-buy="gen:' + idx + '"]');
     logLine("購買「" + GENERATORS[idx].name + "」（等級 " + state.gens[idx] + "）");
     save();
     render();
@@ -822,38 +1060,143 @@
     state.total -= c;
     state.clickMult++;
     sfxBuy();
+    flashBuy('[data-buy="clickMult"]');
     logLine("升級「點擊加倍」至 ×" + Math.pow(2, state.clickMult));
     save();
     render();
   }
+  function flashBuy(sel) {
+    var b = document.querySelector(sel);
+    if (!b) return;
+    b.classList.remove("flash");
+    void b.offsetWidth;
+    b.classList.add("flash");
+  }
 
-  /* ================= 點擊 ================= */
+  /* ================= 點擊：爽度核心 ================= */
   function onClockClick(e) {
     ensureAudio();
     var gain = clickPower();
     state.total += gain;
     state.clicks++;
-    sfxClick();
+    sfxTick();
+
+    /* Q 彈擠壓 */
+    clockBtn.classList.remove("squash");
+    void clockBtn.offsetWidth;
+    clockBtn.classList.add("squash");
+
+    /* 霓虹光暈閃爍 */
     clockBtn.classList.remove("hot");
-    void clockBtn.offsetWidth; /* 重啟動畫 */
+    void clockBtn.offsetWidth;
     clockBtn.classList.add("hot");
 
+    /* 點擊位置漣漪 */
+    var rect = clockBtn.getBoundingClientRect();
+    var x = (e.clientX || rect.left + rect.width / 2) - rect.left;
+    var y = (e.clientY || rect.top + rect.height / 2) - rect.top;
+    var rip = document.createElement("span");
+    rip.className = "ripple";
+    var size = Math.max(rect.width * 0.42, 60);
+    rip.style.left = x + "px";
+    rip.style.top = y + "px";
+    rip.style.width = size + "px";
+    rip.style.height = size + "px";
+    floatiesEl.appendChild(rip);
+    setTimeout(function () { if (rip.parentNode) rip.parentNode.removeChild(rip); }, 600);
+
+    /* 隨機角度飄字 */
     var f = document.createElement("span");
     f.className = "floaty";
-    f.textContent = "+" + (gain === 1 ? "1 秒" : humanize(gain));
-    var r = Math.random() * 60 - 30;
-    f.style.marginLeft = r + "px";
+    f.textContent = fmtGain(gain);
+    f.style.setProperty("--dx", rand(-46, 46).toFixed(0) + "px");
+    f.style.setProperty("--rot", rand(-20, 20).toFixed(1) + "deg");
+    f.style.setProperty("--drop", rand(60, 95).toFixed(0) + "px");
+    f.style.marginLeft = rand(-30, 30).toFixed(0) + "px";
     floatiesEl.appendChild(f);
-    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 720);
+    setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 900);
+
+    /* 數字大彈跳（僅點擊時） */
+    totalEl.classList.remove("bigpop");
+    void totalEl.offsetWidth;
+    totalEl.classList.add("bigpop");
+
+    /* 控制飄字數量 */
+    while (floatiesEl.children.length > 14) floatiesEl.removeChild(floatiesEl.firstChild);
 
     save();
     render();
   }
 
+  /* ================= 摸魚氣泡與狂熱 ================= */
+  function scheduleSlack(first) {
+    var lo = first ? SLACK_FIRST_MIN : SLACK_MIN;
+    var hi = first ? SLACK_FIRST_MAX : SLACK_MAX;
+    slackTimer = setTimeout(spawnSlack, rand(lo, hi));
+  }
+  function spawnSlack() {
+    if (slackBubble || document.hidden) { scheduleSlack(false); return; }
+    var b = document.createElement("div");
+    b.className = "slack-bubble";
+    b.innerHTML =
+      '<span class="b-orb"></span>' +
+      '<span class="b-label">摸魚</span>' +
+      '<span class="b-hint">點我：7 倍狂熱 ×5 秒</span>';
+    b.style.left = rand(4, 78).toFixed(1) + "vw";
+    b.style.top = rand(14, 76).toFixed(1) + "vh";
+    b.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      triggerFrenzy();
+      dismissSlack(true);
+    });
+    document.body.appendChild(b);
+    slackBubble = b;
+    sfxSlack();
+    slackTtlTimer = setTimeout(function () { dismissSlack(false); }, SLACK_TTL);
+  }
+  function dismissSlack(hit) {
+    if (!slackBubble) return;
+    var b = slackBubble;
+    slackBubble = null;
+    clearTimeout(slackTtlTimer);
+    b.classList.add("dying");
+    setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 450);
+    scheduleSlack(false);
+    if (hit) logLine("摸到一顆靈光一閃。");
+  }
+  function triggerFrenzy() {
+    ensureAudio();
+    frenzy = { endAt: Date.now() + FRENZY_DUR };
+    state.frenzies++;
+    document.body.classList.add("frenzy");
+    frenzyChip.classList.add("show");
+    sfxFrenzy();
+    queueBanner("摸魚成功！", "7 倍浪費狂熱，維持 5 秒！", true);
+    logLine("狂熱啟動：7 倍浪費 × 5 秒。");
+    checkAchievements();
+    save();
+  }
+  function endFrenzy() {
+    frenzy = null;
+    document.body.classList.remove("frenzy");
+    frenzyChip.classList.remove("show");
+    sfxFrenzyEnd();
+    logLine("狂熱結束。時間恢復正常流速。");
+  }
+
   /* ================= 渲染 ================= */
+  var lastShownTotal = "";
   function render() {
     var rate = totalRate();
-    totalEl.innerHTML = humanize(state.total) + "<small> 已浪費</small>";
+    var shown = humanize(state.total);
+    totalEl.innerHTML = shown + "<small> 已浪費</small>";
+    /* 數值變化時微彈跳 */
+    if (shown !== lastShownTotal) {
+      totalEl.classList.remove("tick");
+      void totalEl.offsetWidth;
+      totalEl.classList.add("tick");
+      lastShownTotal = shown;
+    }
     rateEl.textContent = humanize(rate);
     clickEl.textContent = humanize(clickPower());
     chipClicks.textContent = state.clicks.toLocaleString("zh-Hant");
@@ -886,15 +1229,6 @@
       cnt.classList.toggle("hot", state.gens[i] > 0);
       $("grate-" + i).textContent = "+" + humanize(GENERATORS[i].rate * state.gens[i]) + "/秒";
     }
-
-    /* 時鐘指針 */
-    var total = state.total;
-    var secDeg = (total % 60) * 6;
-    var minDeg = ((total / 60) % 60) * 6;
-    var hourDeg = ((total / 3600) % 12) * 30;
-    secHand.setAttribute("transform", "rotate(" + secDeg + " 50 50)");
-    minHand.setAttribute("transform", "rotate(" + minDeg + " 50 50)");
-    hourHand.setAttribute("transform", "rotate(" + hourDeg + " 50 50)");
   }
 
   /* ================= 主迴圈 ================= */
@@ -911,6 +1245,39 @@
     } else {
       render();
     }
+    /* 狂熱到期 */
+    if (frenzy && now >= frenzy.endAt) endFrenzy();
+  }
+
+  /* ================= 指針：CPS 聯動 ================= */
+  var secDeg = 0, minDeg = 0, hourDeg = 0;
+  var lastFrame = null;
+  function handLoop(now) {
+    requestAnimationFrame(handLoop);
+    if (lastFrame === null) { lastFrame = now; return; }
+    var dt = Math.min((now - lastFrame) / 1000, 0.2);
+    lastFrame = now;
+
+    var rate = totalRate();
+    /* 指針速度 = f(CPS)，越快越瘋狂，上限 880°/s */
+    var spd = Math.min(rate * 0.55, 880);
+    if (spd > 0) {
+      secDeg = (secDeg + dt * spd) % 360;
+      minDeg = (minDeg + dt * spd / 60) % 360;
+      hourDeg = (hourDeg + dt * spd / 720) % 360;
+      secHand.setAttribute("transform", "rotate(" + secDeg + " 50 50)");
+      minHand.setAttribute("transform", "rotate(" + minDeg + " 50 50)");
+      hourHand.setAttribute("transform", "rotate(" + hourDeg + " 50 50)");
+    }
+    /* 高速模糊 */
+    hands.classList.toggle("fast", spd > 220);
+    hands.classList.toggle("blur", spd > 520);
+
+    /* 狂熱倒數 */
+    if (frenzy) {
+      var remain = Math.max(0, (frenzy.endAt - Date.now()) / 1000);
+      frenzyCount.textContent = remain.toFixed(1) + "s";
+    }
   }
 
   /* ================= 事件 ================= */
@@ -921,7 +1288,7 @@
     state.sound = !state.sound;
     soundBtn.textContent = state.sound ? "音效：開" : "音效：關";
     save();
-    blip(500, 0.06, "square", 0.05);
+    tone(500, 0.06, "square", 0.05);
   });
 
   resetBtn.addEventListener("click", function () { overlay.classList.add("show"); });
@@ -932,9 +1299,15 @@
     state.gens = GENERATORS.map(function () { return 0; });
     state.clickMult = 0;
     state.ach = {};
+    state.slack = 0;
+    state.frenzies = 0;
+    if (frenzy) endFrenzy();
+    clearTimeout(slackTimer);
+    if (slackBubble) { var b = slackBubble; slackBubble = null; clearTimeout(slackTtlTimer); b.remove(); }
     logLine("進度已重置。一切從零開始浪費。");
     save();
     render();
+    scheduleSlack(true);
   });
   overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.classList.remove("show"); });
 
@@ -950,6 +1323,8 @@
   checkAchievements();
   lastTick = Date.now();
   setInterval(tick, 100);
+  requestAnimationFrame(handLoop);
+  scheduleSlack(true);
 })();
 </script>
 </body>
