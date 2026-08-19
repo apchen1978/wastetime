@@ -7,12 +7,12 @@
 <title>浪費時間 | 一個認真浪費時間的遊戲</title>
 <style>
   /* ============================================================
-     浪費時間 (Waste Time) v0.2 | 點擊/放置小遊戲
+     浪費時間 (Waste Time) v0.3 | 點擊/放置小遊戲
      重建自遺失的 Gemini + Project IDX 專案（2026-08-19）
      v0.2 遊戲爽度升級：Q彈擠壓 / 霓虹漣漪 / CPS 聯動指針 /
      數字彈跳 / WebAudio 晶片音 / 摸魚狂熱事件
-     Design: 暗色科技座艙 | 單一 accent 酸綠 #a8e63c
-     Radius 規則: 面板 12px、按鈕全圓形(pill)、晶片 6px
+     v0.3 關卡系統：時間達標即升級，每級產量 ×2，
+     每一關換全新背景與按鈕風格（共 8 套主題循環）
      ============================================================ */
 
   :root {
@@ -24,8 +24,10 @@
     --text:      #e6edf3;
     --dim:       #8b98a5;
     --accent:    #a8e63c;
+    --accent-rgb:168, 230, 60;
     --accent-ink:#0a0d12;
     --gold:      #ffc857;
+    --gold-rgb:  255, 199, 87;
     --danger:    #ff5d5d;
     --r-panel: 12px;
     --r-chip:  6px;
@@ -39,8 +41,8 @@
 
   body {
     background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(168, 230, 60, 0.06), transparent 60%),
-      radial-gradient(900px 500px at 0% 110%, rgba(168, 230, 60, 0.04), transparent 55%),
+      radial-gradient(1200px 600px at 80% -10%, rgba(var(--accent-rgb), 0.07), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, rgba(var(--accent-rgb), 0.05), transparent 55%),
       var(--bg);
     background-attachment: fixed;
     color: var(--text);
@@ -48,6 +50,7 @@
     min-height: 100dvh;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+    transition: background-color 0.7s ease;
   }
 
   /* 微格線背景 */
@@ -70,12 +73,26 @@
     position: fixed; inset: 0;
     pointer-events: none;
     z-index: 70;
-    border: 3px solid rgba(255, 199, 87, 0.05);
+    border: 3px solid rgba(var(--gold-rgb), 0.05);
     animation: goldFlash 0.9s ease-in-out infinite;
   }
   @keyframes goldFlash {
-    0%, 100% { border-color: rgba(255,199,87,0.06); box-shadow: inset 0 0 30px rgba(255,199,87,0.05); }
-    50%      { border-color: rgba(255,199,87,0.9);  box-shadow: inset 0 0 90px rgba(255,199,87,0.30); }
+    0%, 100% { border-color: rgba(var(--gold-rgb),0.06); box-shadow: inset 0 0 30px rgba(var(--gold-rgb),0.05); }
+    50%      { border-color: rgba(var(--gold-rgb),0.9);  box-shadow: inset 0 0 90px rgba(var(--gold-rgb),0.30); }
+  }
+
+  /* 升級過場光爆 */
+  .level-flash {
+    position: fixed; inset: 0;
+    z-index: 85;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(circle at 50% 45%, rgba(var(--accent-rgb), 0.30), transparent 68%);
+  }
+  .level-flash.go { animation: flashOut 1s ease-out forwards; }
+  @keyframes flashOut {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
   }
 
   .wrap {
@@ -123,7 +140,7 @@
     border-radius: 999px;
     padding: 8px 16px;
     cursor: pointer;
-    transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease;
+    transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease, color 0.3s ease;
     -webkit-tap-highlight-color: transparent;
   }
   .btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -143,6 +160,7 @@
     border: 1px solid var(--line-soft);
     border-radius: var(--r-panel);
     padding: 18px;
+    transition: background-color 0.7s ease, border-color 0.7s ease;
   }
   .panel h2 {
     font-family: var(--mono);
@@ -173,7 +191,7 @@
     background:
       radial-gradient(circle at 32% 28%, #1a2330, #0e131b 70%);
     cursor: pointer;
-    transition: transform 0.06s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.06s ease, border-color 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     user-select: none;
@@ -182,10 +200,10 @@
   .clock-btn:hover { border-color: var(--accent); }
   .clock-btn:active { transform: scale(0.955); }
   .clock-btn.hot {
-    box-shadow: 0 0 0 6px rgba(168, 230, 60, 0.10), 0 0 42px rgba(168, 230, 60, 0.22);
+    box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.10), 0 0 42px rgba(var(--accent-rgb), 0.22);
   }
   body.frenzy .clock-btn.hot {
-    box-shadow: 0 0 0 6px rgba(255,199,87,0.12), 0 0 46px rgba(255,199,87,0.30);
+    box-shadow: 0 0 0 6px rgba(var(--gold-rgb),0.12), 0 0 46px rgba(var(--gold-rgb),0.30);
   }
 
   /* Q 彈擠壓 */
@@ -220,26 +238,26 @@
   .ripple {
     position: absolute;
     border-radius: 50%;
-    border: 2.5px solid rgba(168, 230, 60, 0.85);
-    box-shadow: 0 0 18px rgba(168, 230, 60, 0.45), inset 0 0 12px rgba(168, 230, 60, 0.2);
+    border: 2.5px solid rgba(var(--accent-rgb), 0.85);
+    box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.45), inset 0 0 12px rgba(var(--accent-rgb), 0.2);
     pointer-events: none;
     animation: rippleOut 0.55s ease-out forwards;
     z-index: 4;
   }
-  body.frenzy .ripple { border-color: rgba(255,199,87,0.9); box-shadow: 0 0 18px rgba(255,199,87,0.5), inset 0 0 12px rgba(255,199,87,0.25); }
+  body.frenzy .ripple { border-color: rgba(var(--gold-rgb),0.9); box-shadow: 0 0 18px rgba(var(--gold-rgb),0.5), inset 0 0 12px rgba(var(--gold-rgb),0.25); }
   @keyframes rippleOut {
     0%   { transform: translate(-50%, -50%) scale(0.15); opacity: 0.95; }
     100% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; }
   }
 
-  /* 點擊飄字（隨機角度與位移） */
+  /* 點擊飄字 */
   .floaty {
     position: absolute;
     font-family: var(--mono);
     font-size: 16px;
     font-weight: 700;
     color: var(--accent);
-    text-shadow: 0 0 10px rgba(168,230,60,0.55);
+    text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.55);
     --dx: 0px;
     --rot: 0deg;
     --drop: 78px;
@@ -249,7 +267,7 @@
     z-index: 5;
     pointer-events: none;
   }
-  body.frenzy .floaty { color: var(--gold); text-shadow: 0 0 10px rgba(255,199,87,0.6); }
+  body.frenzy .floaty { color: var(--gold); text-shadow: 0 0 10px rgba(var(--gold-rgb),0.6); }
   @keyframes floatUp {
     0%   { transform: translate(-50%, 0) rotate(0deg) scale(0.55); opacity: 0; }
     12%  { opacity: 1; }
@@ -264,7 +282,7 @@
     font-weight: 700;
     letter-spacing: 0.01em;
     color: var(--accent);
-    text-shadow: 0 0 18px rgba(168, 230, 60, 0.25);
+    text-shadow: 0 0 18px rgba(var(--accent-rgb), 0.25);
     line-height: 1.15;
     font-variant-numeric: tabular-nums;
     transform-origin: 50% 60%;
@@ -272,7 +290,7 @@
   .readout .total small { font-size: 0.5em; color: var(--text); font-weight: 600; }
   .readout .total.tick { animation: tickPop 0.22s ease-out; }
   .readout .total.bigpop { animation: bigPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-  body.frenzy .readout .total { color: var(--gold); text-shadow: 0 0 18px rgba(255,199,87,0.3); }
+  body.frenzy .readout .total { color: var(--gold); text-shadow: 0 0 18px rgba(var(--gold-rgb),0.3); }
   @keyframes tickPop { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
   @keyframes bigPop  { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
 
@@ -296,9 +314,11 @@
     border-radius: var(--r-chip);
     padding: 5px 10px;
     background: var(--panel-2);
+    transition: border-color 0.5s ease;
   }
   .chip b { color: var(--text); font-weight: 600; }
   .chip .accent { color: var(--accent); }
+  .chip.level-chip { border-color: rgba(var(--accent-rgb), 0.4); }
 
   /* ---------- 右：升級與統計 ---------- */
   .controls { display: flex; flex-direction: column; gap: 14px; }
@@ -362,7 +382,7 @@
     padding: 8px 14px;
     cursor: pointer;
     white-space: nowrap;
-    transition: transform 0.07s ease, filter 0.12s ease;
+    transition: transform 0.07s ease, filter 0.12s ease, background 0.4s ease, color 0.4s ease, border 0.4s ease, box-shadow 0.4s ease, border-radius 0.4s ease;
     font-variant-numeric: tabular-nums;
   }
   .buy:hover { filter: brightness(1.08); }
@@ -386,6 +406,7 @@
     border-radius: var(--r-chip);
     padding: 10px;
     background: var(--panel-2);
+    transition: border-color 0.5s ease;
   }
   .stat .k {
     font-size: 11px;
@@ -434,10 +455,10 @@
     background: var(--panel-2);
     border: 1px solid var(--accent);
     border-radius: var(--r-panel);
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 24px rgba(168,230,60,0.15);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 24px rgba(var(--accent-rgb),0.15);
     text-align: center;
     max-width: min(420px, 90vw);
-    transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.2);
+    transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.25, 1.2), border-color 0.4s ease;
     pointer-events: none;
   }
   .banner.show { transform: translate(-50%, 0); }
@@ -448,7 +469,7 @@
     color: var(--accent);
   }
   .banner .b-msg { font-size: 14px; color: var(--text); }
-  .banner.gold { border-color: var(--gold); box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 24px rgba(255,199,87,0.25); }
+  .banner.gold { border-color: var(--gold); box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 24px rgba(var(--gold-rgb),0.25); }
   .banner.gold .b-title { color: var(--gold); }
 
   /* ---------- 狂熱計時 ---------- */
@@ -466,7 +487,7 @@
     background: var(--gold);
     border-radius: 999px;
     padding: 8px 16px;
-    box-shadow: 0 0 22px rgba(255,199,87,0.55);
+    box-shadow: 0 0 22px rgba(var(--gold-rgb),0.55);
     animation: chipPulse 0.6s ease-in-out infinite;
     white-space: nowrap;
   }
@@ -487,9 +508,9 @@
     cursor: pointer;
     padding: 12px 18px;
     border-radius: 999px;
-    background: linear-gradient(140deg, rgba(255,199,87,0.16), rgba(168,230,60,0.10));
-    border: 1.5px solid rgba(255,199,87,0.65);
-    box-shadow: 0 0 26px rgba(255,199,87,0.28), inset 0 0 14px rgba(255,199,87,0.10);
+    background: linear-gradient(140deg, rgba(var(--gold-rgb),0.16), rgba(var(--accent-rgb),0.10));
+    border: 1.5px solid rgba(var(--gold-rgb),0.65);
+    box-shadow: 0 0 26px rgba(var(--gold-rgb),0.28), inset 0 0 14px rgba(var(--gold-rgb),0.10);
     animation: bubbleFloat 2.6s ease-in-out infinite;
     -webkit-tap-highlight-color: transparent;
     transition: opacity 0.4s ease, transform 0.15s ease;
@@ -500,10 +521,10 @@
     width: 22px; height: 22px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #ffe9b0, var(--gold) 60%, #d99a1f);
-    box-shadow: 0 0 14px rgba(255,199,87,0.8);
+    box-shadow: 0 0 14px rgba(var(--gold-rgb),0.8);
     animation: orbGlow 1.6s ease-in-out infinite;
   }
-  @keyframes orbGlow { 0%, 100% { box-shadow: 0 0 10px rgba(255,199,87,0.6); } 50% { box-shadow: 0 0 22px rgba(255,199,87,1); } }
+  @keyframes orbGlow { 0%, 100% { box-shadow: 0 0 10px rgba(var(--gold-rgb),0.6); } 50% { box-shadow: 0 0 22px rgba(var(--gold-rgb),1); } }
   .slack-bubble .b-label {
     font-family: var(--mono);
     font-size: 13px;
@@ -558,6 +579,139 @@
     color: #4d5a66;
     letter-spacing: 0.04em;
   }
+
+  /* ============================================================
+     關卡主題（每一關換背景與按鈕風格）
+     Lv1 原點 / Lv2 深空 / Lv3 霓虹玫瑰 / Lv4 琥珀 /
+     Lv5 薄荷 / Lv6 熔岩 / Lv7 極光 / Lv8+ 時間深處
+     ============================================================ */
+
+  /* --- Lv1 原點：墨黑 × 酸綠（預設） --- */
+  body { --accent: #a8e63c; --accent-rgb: 168, 230, 60; --accent-ink: #0a0d12; }
+
+  /* --- Lv2 深空：深夜藍 × 電光青 --- */
+  body.theme-2 {
+    --bg: #060a16; --panel: #0b1220; --panel-2: #101a2c; --line: #1c2c44; --line-soft: #142038;
+    --accent: #4dd8ff; --accent-rgb: 77, 216, 255; --accent-ink: #04121c;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(77,216,255,0.10), transparent 60%),
+      radial-gradient(900px 500px at 90% 110%, rgba(77,216,255,0.06), transparent 55%),
+      var(--bg);
+  }
+  body.theme-2 .clock-btn {
+    border: 2px solid #2a5a74;
+    background: radial-gradient(circle at 32% 28%, #12283a, #08121e 70%);
+  }
+  body.theme-2 .clock-btn:hover { border-color: var(--accent); box-shadow: 0 0 24px rgba(77,216,255,0.25); }
+  body.theme-2 .buy { background: linear-gradient(135deg, #4dd8ff, #2a9fd8); }
+
+  /* --- Lv3 霓虹玫瑰：暗紅 × 霓虹玫瑰 --- */
+  body.theme-3 {
+    --bg: #140a10; --panel: #1c0f16; --panel-2: #241322; --line: #40203a; --line-soft: #2e1628;
+    --accent: #ff6b9d; --accent-rgb: 255, 107, 157; --accent-ink: #1c030c;
+    background:
+      radial-gradient(1000px 600px at 80% 0%, rgba(255,107,157,0.10), transparent 60%),
+      radial-gradient(800px 500px at 0% 100%, rgba(255,107,157,0.07), transparent 55%),
+      var(--bg);
+  }
+  body.theme-3 .clock-btn {
+    border: 2px solid #5a2a44;
+    background: radial-gradient(circle at 32% 28%, #331426, #180a12 70%);
+  }
+  body.theme-3 .clock-btn:hover { border-color: var(--accent); box-shadow: 0 0 24px rgba(255,107,157,0.3); }
+  body.theme-3 .buy {
+    background: transparent;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+    box-shadow: 0 0 12px rgba(255,107,157,0.18);
+  }
+  body.theme-3 .buy:disabled { background: #241322; border-color: var(--line); color: #5c6a78; box-shadow: none; }
+
+  /* --- Lv4 琥珀：焦糖暗 × 琥珀橙 --- */
+  body.theme-4 {
+    --bg: #120b06; --panel: #1a1108; --panel-2: #221707; --line: #4a3418; --line-soft: #33240e;
+    --accent: #ffa14d; --accent-rgb: 255, 161, 77; --accent-ink: #1c0f02;
+    background:
+      radial-gradient(1100px 600px at 50% -10%, rgba(255,161,77,0.10), transparent 60%),
+      radial-gradient(700px 500px at 100% 110%, rgba(255,161,77,0.06), transparent 55%),
+      var(--bg);
+  }
+  body.theme-4 .clock-btn {
+    border: 3px dashed #5a3a18;
+    background: radial-gradient(circle at 32% 28%, #2e1c0c, #160d05 70%);
+  }
+  body.theme-4 .clock-btn:hover { border-color: var(--accent); border-style: solid; }
+  body.theme-4 .buy { border-radius: 10px; background: linear-gradient(180deg, #ffb35e, #ff8f33); }
+
+  /* --- Lv5 薄荷：深綠 × 薄荷 --- */
+  body.theme-5 {
+    --bg: #081410; --panel: #0d1c15; --panel-2: #12241b; --line: #1f4432; --line-soft: #16301f;
+    --accent: #5ef0a8; --accent-rgb: 94, 240, 168; --accent-ink: #032012;
+    background:
+      radial-gradient(1100px 600px at 15% -10%, rgba(94,240,168,0.09), transparent 60%),
+      radial-gradient(800px 500px at 85% 110%, rgba(94,240,168,0.06), transparent 55%),
+      var(--bg);
+  }
+  body.theme-5 .clock-btn {
+    border: 2px solid #1e5840;
+    background: radial-gradient(circle at 32% 28%, #0f2e1f, #071510 70%);
+  }
+  body.theme-5 .clock-btn:hover { border-color: var(--accent); box-shadow: 0 0 24px rgba(94,240,168,0.28); }
+  body.theme-5 .buy {
+    background: transparent;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+    box-shadow: 0 0 14px rgba(94,240,168,0.2);
+  }
+  body.theme-5 .buy:disabled { background: #12241b; border-color: var(--line); color: #5c6a78; box-shadow: none; }
+
+  /* --- Lv6 熔岩：炭黑 × 熔岩紅 --- */
+  body.theme-6 {
+    --bg: #120708; --panel: #1a0b0c; --panel-2: #24100f; --line: #4a1f1c; --line-soft: #33130f;
+    --accent: #ff5d5d; --accent-rgb: 255, 93, 93; --accent-ink: #1e0203;
+    background:
+      radial-gradient(1200px 700px at 50% 0%, rgba(255,93,93,0.10), transparent 60%),
+      radial-gradient(900px 600px at 100% 110%, rgba(255,120,60,0.07), transparent 55%),
+      var(--bg);
+  }
+  body.theme-6 .clock-btn {
+    border: 3px solid #5a201c;
+    background: radial-gradient(circle at 32% 28%, #330f0e, #180606 70%);
+  }
+  body.theme-6 .clock-btn:hover { border-color: var(--accent); box-shadow: 0 0 28px rgba(255,93,93,0.32); }
+  body.theme-6 .buy { background: linear-gradient(135deg, #ff6b5e, #e23b3b); box-shadow: 0 2px 14px rgba(255,93,93,0.25); }
+
+  /* --- Lv7 極光：深冰藍 × 極光青 --- */
+  body.theme-7 {
+    --bg: #071018; --panel: #0b1622; --panel-2: #101d2c; --line: #1d3a52; --line-soft: #142a3c;
+    --accent: #8be9ff; --accent-rgb: 139, 233, 255; --accent-ink: #03141c;
+    background:
+      radial-gradient(900px 500px at 20% 20%, rgba(139,233,255,0.10), transparent 55%),
+      radial-gradient(1100px 600px at 90% 90%, rgba(45,212,191,0.08), transparent 60%),
+      var(--bg);
+  }
+  body.theme-7 .clock-btn {
+    border: 2px solid #1e4a63;
+    background: radial-gradient(circle at 32% 28%, #0e2a3c, #060f18 70%);
+  }
+  body.theme-7 .clock-btn:hover { border-color: var(--accent); box-shadow: 0 0 26px rgba(139,233,255,0.3); }
+  body.theme-7 .buy { background: linear-gradient(135deg, #8be9ff, #2dd4bf); }
+
+  /* --- Lv8+ 時間深處：墨金 × 純金 --- */
+  body.theme-8 {
+    --bg: #0d0a04; --panel: #161006; --panel-2: #1e1608; --line: #4a3a14; --line-soft: #33280c;
+    --accent: #ffc857; --accent-rgb: 255, 200, 87; --accent-ink: #1a1402;
+    background:
+      radial-gradient(1000px 600px at 50% -10%, rgba(255,200,87,0.12), transparent 60%),
+      radial-gradient(800px 500px at 0% 110%, rgba(255,200,87,0.07), transparent 55%),
+      var(--bg);
+  }
+  body.theme-8 .clock-btn {
+    border: 2px solid #5a4418;
+    background: radial-gradient(circle at 32% 28%, #2e2108, #150f03 70%);
+  }
+  body.theme-8 .clock-btn:hover { border-color: var(--accent); box-shadow: 0 0 30px rgba(255,200,87,0.35); }
+  body.theme-8 .buy { background: linear-gradient(180deg, #ffd97a, #f0a92e); box-shadow: 0 2px 16px rgba(255,200,87,0.3); }
 
   /* ---------- 行動版 ---------- */
   @media (max-width: 780px) {
@@ -625,9 +779,10 @@
       </div>
 
       <div class="chip-row">
+        <span class="chip level-chip">關卡 <b class="accent" id="levelChip">Lv.1</b> · 時間 <b id="levelMultChip">×1</b></span>
         <span class="chip">累計點擊 <b id="chipClicks">0</b></span>
         <span class="chip">升級 <b id="chipGens">0</b> / 11</span>
-        <span class="chip">成就 <b class="accent" id="chipAch">0</b> / <b id="chipAchTotal">15</b></span>
+        <span class="chip">成就 <b class="accent" id="chipAch">0</b> / <b id="chipAchTotal">17</b></span>
       </div>
     </section>
 
@@ -668,8 +823,11 @@
     <div class="log-list" id="logList"></div>
   </section>
 
-  <footer>浪費時間 v0.2 · 重建自遺失的 Gemini + Project IDX 專案 · 資料存於本機瀏覽器</footer>
+  <footer>浪費時間 v0.3 · 重建自遺失的 Gemini + Project IDX 專案 · 資料存於本機瀏覽器</footer>
 </div>
+
+<!-- 升級過場光爆 -->
+<div class="level-flash" id="levelFlash"></div>
 
 <!-- 狂熱計時 -->
 <div class="frenzy-chip" id="frenzyChip">狂熱 ×7 · <span id="frenzyCount">5.0s</span></div>
@@ -722,6 +880,20 @@
   var SLACK_MAX = 80000;
   var SLACK_TTL = 12000;        // 氣泡存活時間
 
+  /* 關卡門檻（秒）：每跨過一個門檻就升級，時間流速 ×2 */
+  var LEVEL_THRESHOLDS = [
+    60,            // Lv2  1 分鐘
+    3600,          // Lv3  1 小時
+    86400,         // Lv4  1 天
+    604800,        // Lv5  1 週
+    2628000,       // Lv6  1 月
+    31536000,      // Lv7  1 年
+    315360000,     // Lv8  10 年
+    3153600000,    // Lv9  100 年
+    31536000000    // Lv10 1000 年
+  ];
+  var THEME_NAMES = ["原點", "深空", "霓虹玫瑰", "琥珀", "薄荷", "熔岩", "極光", "時間深處"];
+
   var ACHIEVEMENTS = [
     { id: "t1m",   cond: "time",   target: 60,          title: "浪費 1 分鐘", msg: "一分鐘過去了。你不會想把它要回來的，對吧？" },
     { id: "t1h",   cond: "time",   target: 3600,        title: "浪費 1 小時", msg: "一小時過去了。這下真的回不來了。" },
@@ -737,7 +909,9 @@
     { id: "rate",  cond: "rate",   target: 100000,      title: "時間本身",     msg: "每秒十萬秒。你已經不是人類了。" },
     { id: "play",  cond: "session",target: 600,         title: "真愛無敵",     msg: "連續玩十分鐘。這遊戲才是你的本命。" },
     { id: "slack1",cond: "slack",  target: 1,           title: "摸魚王",       msg: "你抓住了一次靈光一閃。沒白摸。" },
-    { id: "fr5",   cond: "frenzy", target: 5,           title: "狂熱常客",     msg: "觸發五次狂熱。時間被你玩弄於股掌之間。" }
+    { id: "fr5",   cond: "frenzy", target: 5,           title: "狂熱常客",     msg: "觸發五次狂熱。時間被你玩弄於股掌之間。" },
+    { id: "lv4",   cond: "level",  target: 4,           title: "漸入佳境",     msg: "進入第 4 關。你開始掌握浪費的藝術。" },
+    { id: "lv8",   cond: "level",  target: 8,           title: "時間行者",     msg: "第 8 關。普通人的時間單位已經不夠用了。" }
   ];
 
   /* ================= 狀態 ================= */
@@ -753,7 +927,8 @@
     ts: Date.now()
   };
 
-  var frenzy = null;          // { endAt } 或 null
+  var frenzy = null;
+  var curLevel = 1;
   var sessionStart = Date.now();
   var lastTick = Date.now();
   var bannerTimer = null;
@@ -767,12 +942,14 @@
   var $ = function (id) { return document.getElementById(id); };
   var totalEl = $("totalReadout"), rateEl = $("rateReadout"), clickEl = $("clickReadout");
   var chipClicks = $("chipClicks"), chipGens = $("chipGens"), chipAch = $("chipAch"), chipAchTotal = $("chipAchTotal");
+  var levelChip = $("levelChip"), levelMultChip = $("levelMultChip");
   var statSession = $("statSession"), statClicks = $("statClicks"), statRate = $("statRate");
   var genListEl = $("genList"), logListEl = $("logList"), floatiesEl = $("floaties");
   var clockBtn = $("clockBtn"), soundBtn = $("soundBtn"), resetBtn = $("resetBtn");
   var overlay = $("overlay");
   var banner = $("banner"), bannerTitle = $("bannerTitle"), bannerMsg = $("bannerMsg");
   var frenzyChip = $("frenzyChip"), frenzyCount = $("frenzyCount");
+  var levelFlash = $("levelFlash");
   var hands = $("hands"), secHand = $("secHand"), minHand = $("minHand"), hourHand = $("hourHand");
 
   chipAchTotal.textContent = ACHIEVEMENTS.length;
@@ -818,11 +995,21 @@
     for (var i = 0; i < GENERATORS.length; i++) r += GENERATORS[i].rate * state.gens[i];
     return r;
   }
+
+  /* ----- 關卡 ----- */
+  function levelFrom(total) {
+    var lv = 1;
+    for (var i = 0; i < LEVEL_THRESHOLDS.length; i++) {
+      if (total >= LEVEL_THRESHOLDS[i]) lv = i + 2;
+    }
+    return lv;
+  }
+  function levelMult(lv) { return Math.pow(2, lv - 1); }
   function frenzyMult() {
     return frenzy && Date.now() < frenzy.endAt ? FRENZY_MULT : 1;
   }
-  function totalRate() { return baseRate() * frenzyMult(); }
-  function clickPower() { return Math.pow(2, state.clickMult) * frenzyMult(); }
+  function totalRate() { return baseRate() * levelMult(curLevel) * frenzyMult(); }
+  function clickPower() { return Math.pow(2, state.clickMult) * levelMult(curLevel) * frenzyMult(); }
   function gensOwned() {
     var c = 0;
     for (var i = 0; i < state.gens.length; i++) if (state.gens[i] > 0) c++;
@@ -872,20 +1059,17 @@
     } catch (e) { /* ignore */ }
   }
 
-  /* 清脆機械滴答 */
   function sfxTick() {
     var p = rand(0.85, 1.15);
     tone(1900 * p, 0.035, "square", 0.05);
     tone(2850 * p, 0.018, "sine", 0.04, 0.002);
     noise(0.012, 0.05, 0, 4000);
   }
-  /* 購買：上升兩音 */
   function sfxBuy() {
     tone(523.25, 0.07, "square", 0.05);
     tone(659.25, 0.07, "square", 0.05, 0.06);
     tone(783.99, 0.1, "triangle", 0.045, 0.12);
   }
-  /* 成就：上升音階 */
   function sfxAch() {
     var notes = [523.25, 659.25, 783.99, 1046.5];
     for (var i = 0; i < notes.length; i++) {
@@ -893,12 +1077,19 @@
     }
     noise(0.25, 0.025, 0.33, 6000);
   }
-  /* 摸魚出現：輕柔提示 */
+  /* 升級：上升號角 */
+  function sfxLevel() {
+    tone(392, 0.12, "square", 0.05);
+    tone(523.25, 0.12, "square", 0.05, 0.1);
+    tone(659.25, 0.16, "square", 0.05, 0.2);
+    tone(783.99, 0.22, "triangle", 0.06, 0.32);
+    tone(1046.5, 0.3, "triangle", 0.05, 0.48);
+    noise(0.3, 0.03, 0.3, 5000);
+  }
   function sfxSlack() {
     tone(987.77, 0.08, "sine", 0.045);
     tone(1318.51, 0.12, "sine", 0.04, 0.07);
   }
-  /* 狂熱啟動：金黃上升掃頻 */
   function sfxFrenzy() {
     tone(300, 0.45, "sawtooth", 0.04, 0, 1300);
     tone(600, 0.45, "square", 0.03, 0.03, 1800);
@@ -906,7 +1097,6 @@
     tone(2093, 0.3, "triangle", 0.045, 0.32);
     noise(0.35, 0.03, 0.15, 5000);
   }
-  /* 狂熱結束：下滑 */
   function sfxFrenzyEnd() {
     tone(900, 0.18, "square", 0.035, 0, 300);
   }
@@ -934,7 +1124,8 @@
         var away = (Date.now() - s.ts) / 1000;
         var cap = 8 * 3600;
         if (away > 60) {
-          var gain = Math.min(away, cap) * baseRate();
+          var lv = levelFrom(state.total);
+          var gain = Math.min(away, cap) * baseRate() * levelMult(lv);
           if (gain > 0.5) {
             state.total += gain;
             queueBanner("你不在的期間", "時間又偷偷浪費了 " + humanize(gain));
@@ -981,6 +1172,7 @@
   function checkAchievements() {
     var rate = baseRate();
     var sessionSec = (Date.now() - sessionStart) / 1000;
+    var lv = levelFrom(state.total);
     var unlocked = 0;
     for (var i = 0; i < ACHIEVEMENTS.length; i++) {
       var a = ACHIEVEMENTS[i];
@@ -994,6 +1186,7 @@
         case "session": hit = sessionSec >= a.target; break;
         case "slack":   hit = state.slack >= a.target; break;
         case "frenzy":  hit = state.frenzies >= a.target; break;
+        case "level":   hit = lv >= a.target; break;
       }
       if (hit) {
         state.ach[a.id] = true;
@@ -1003,6 +1196,37 @@
       }
     }
     if (unlocked) save();
+  }
+
+  /* ================= 關卡系統 ================= */
+  function applyTheme(lv) {
+    var theme = Math.min(lv, 8);
+    document.body.className = "theme-" + theme;
+    levelChip.textContent = "Lv." + lv;
+    levelMultChip.textContent = "×" + levelMult(lv);
+  }
+  function levelUpFlash() {
+    levelFlash.classList.remove("go");
+    void levelFlash.offsetWidth;
+    levelFlash.classList.add("go");
+  }
+  function checkLevel() {
+    var lv = levelFrom(state.total);
+    if (lv > curLevel) {
+      curLevel = lv;
+      applyTheme(curLevel);
+      levelUpFlash();
+      sfxLevel();
+      var themeName = THEME_NAMES[Math.min(curLevel, 8) - 1];
+      queueBanner("升級！進入第 " + curLevel + " 關", "時間流速加倍（×" + levelMult(curLevel) + "）！背景換成「" + themeName + "」");
+      logLine("進入第 " + curLevel + " 關「" + themeName + "」，時間流速 ×" + levelMult(curLevel) + "。");
+      totalEl.classList.remove("bigpop");
+      void totalEl.offsetWidth;
+      totalEl.classList.add("bigpop");
+      checkAchievements();
+      save();
+      render();
+    }
   }
 
   /* ================= 升級介面 ================= */
@@ -1053,6 +1277,7 @@
     logLine("購買「" + GENERATORS[idx].name + "」（等級 " + state.gens[idx] + "）");
     save();
     render();
+    checkLevel();
   }
   function buyClickMult() {
     var c = clickMultCost();
@@ -1064,6 +1289,7 @@
     logLine("升級「點擊加倍」至 ×" + Math.pow(2, state.clickMult));
     save();
     render();
+    checkLevel();
   }
   function flashBuy(sel) {
     var b = document.querySelector(sel);
@@ -1081,17 +1307,14 @@
     state.clicks++;
     sfxTick();
 
-    /* Q 彈擠壓 */
     clockBtn.classList.remove("squash");
     void clockBtn.offsetWidth;
     clockBtn.classList.add("squash");
 
-    /* 霓虹光暈閃爍 */
     clockBtn.classList.remove("hot");
     void clockBtn.offsetWidth;
     clockBtn.classList.add("hot");
 
-    /* 點擊位置漣漪 */
     var rect = clockBtn.getBoundingClientRect();
     var x = (e.clientX || rect.left + rect.width / 2) - rect.left;
     var y = (e.clientY || rect.top + rect.height / 2) - rect.top;
@@ -1105,7 +1328,6 @@
     floatiesEl.appendChild(rip);
     setTimeout(function () { if (rip.parentNode) rip.parentNode.removeChild(rip); }, 600);
 
-    /* 隨機角度飄字 */
     var f = document.createElement("span");
     f.className = "floaty";
     f.textContent = fmtGain(gain);
@@ -1116,16 +1338,15 @@
     floatiesEl.appendChild(f);
     setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 900);
 
-    /* 數字大彈跳（僅點擊時） */
     totalEl.classList.remove("bigpop");
     void totalEl.offsetWidth;
     totalEl.classList.add("bigpop");
 
-    /* 控制飄字數量 */
     while (floatiesEl.children.length > 14) floatiesEl.removeChild(floatiesEl.firstChild);
 
     save();
     render();
+    checkLevel();
   }
 
   /* ================= 摸魚氣泡與狂熱 ================= */
@@ -1190,7 +1411,6 @@
     var rate = totalRate();
     var shown = humanize(state.total);
     totalEl.innerHTML = shown + "<small> 已浪費</small>";
-    /* 數值變化時微彈跳 */
     if (shown !== lastShownTotal) {
       totalEl.classList.remove("tick");
       void totalEl.offsetWidth;
@@ -1210,7 +1430,6 @@
     statClicks.textContent = state.clicks.toLocaleString("zh-Hant");
     statRate.textContent = humanize(rate);
 
-    /* 點擊加倍 */
     var cmCost = clickMultCost();
     var cmBtn = document.querySelector('[data-buy="clickMult"]');
     cmBtn.disabled = state.total < cmCost;
@@ -1218,7 +1437,6 @@
     $("clickMultCount").textContent = "×" + Math.pow(2, state.clickMult);
     $("clickMultRate").textContent = "目前每次 +" + humanize(clickPower());
 
-    /* 升級列 */
     for (var i = 0; i < GENERATORS.length; i++) {
       var c = genCost(i);
       var b = document.querySelector('[data-buy="gen:' + i + '"]');
@@ -1242,10 +1460,10 @@
       save();
       render();
       checkAchievements();
+      checkLevel();
     } else {
       render();
     }
-    /* 狂熱到期 */
     if (frenzy && now >= frenzy.endAt) endFrenzy();
   }
 
@@ -1259,7 +1477,6 @@
     lastFrame = now;
 
     var rate = totalRate();
-    /* 指針速度 = f(CPS)，越快越瘋狂，上限 880°/s */
     var spd = Math.min(rate * 0.55, 880);
     if (spd > 0) {
       secDeg = (secDeg + dt * spd) % 360;
@@ -1269,11 +1486,9 @@
       minHand.setAttribute("transform", "rotate(" + minDeg + " 50 50)");
       hourHand.setAttribute("transform", "rotate(" + hourDeg + " 50 50)");
     }
-    /* 高速模糊 */
     hands.classList.toggle("fast", spd > 220);
     hands.classList.toggle("blur", spd > 520);
 
-    /* 狂熱倒數 */
     if (frenzy) {
       var remain = Math.max(0, (frenzy.endAt - Date.now()) / 1000);
       frenzyCount.textContent = remain.toFixed(1) + "s";
@@ -1304,6 +1519,8 @@
     if (frenzy) endFrenzy();
     clearTimeout(slackTimer);
     if (slackBubble) { var b = slackBubble; slackBubble = null; clearTimeout(slackTtlTimer); b.remove(); }
+    curLevel = 1;
+    applyTheme(curLevel);
     logLine("進度已重置。一切從零開始浪費。");
     save();
     render();
@@ -1318,6 +1535,8 @@
   load();
   soundBtn.textContent = state.sound ? "音效：開" : "音效：關";
   buildGens();
+  curLevel = levelFrom(state.total);
+  applyTheme(curLevel);
   render();
   logLine("遊戲載入。開始浪費時間吧。");
   checkAchievements();
